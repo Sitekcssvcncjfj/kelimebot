@@ -2,11 +2,13 @@ import os
 import random
 import asyncio
 import time
+import io
 from pathlib import Path
 from collections import deque
 from dotenv import load_dotenv
+from PIL import Image, ImageDraw, ImageFont
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -184,33 +186,54 @@ def choose_non_repeating(seq, used_keys, key_func):
     used_keys.append(key_func(item))
     return item
 
-def build_score_card(name, elapsed, points, xp, coins, total_points, lvl, streak, mode_name):
-    return (
-        "╔════════════════════╗\n"
-        "🏆 *SKOR KARTI* 🏆\n"
-        "╚════════════════════╝\n\n"
-        f"🎯 *Oyun:* {mode_name}\n"
-        f"👤 *Kazanan:* {name}\n"
-        f"⏱️ *Süre:* `{elapsed:.2f}` sn\n\n"
-        f"➕ *Kazanılanlar*\n"
-        f"🏅 Puan: `+{points}`\n"
-        f"⭐ XP: `+{xp}`\n"
-        f"💰 Coin: `+{coins}`\n\n"
-        f"📊 *Genel Durum*\n"
-        f"🏆 Toplam Puan: `{total_points}`\n"
-        f"🆙 Level: `{lvl}`\n"
-        f"🔥 Streak: `{streak}`"
-    )
+def create_score_image(name, elapsed, points, xp, coins, total_points, lvl, streak, mode_name):
+    width, height = 900, 550
+    image = Image.new("RGB", (width, height), (20, 24, 36))
+    draw = ImageDraw.Draw(image)
 
-def build_timeout_card(answer, mode_name):
-    return (
-        "╔════════════════════╗\n"
-        "⏰ *SÜRE DOLDU* ⏰\n"
-        "╚════════════════════╝\n\n"
-        f"🎯 *Oyun:* {mode_name}\n"
-        f"✅ Doğru cevap: *{answer}*\n\n"
-        f"⏭️ Yeni soru hazırlanıyor..."
-    )
+    try:
+        title_font = ImageFont.truetype("arial.ttf", 42)
+        big_font = ImageFont.truetype("arial.ttf", 32)
+        normal_font = ImageFont.truetype("arial.ttf", 24)
+        small_font = ImageFont.truetype("arial.ttf", 20)
+    except:
+        title_font = ImageFont.load_default()
+        big_font = ImageFont.load_default()
+        normal_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
+
+    draw.rounded_rectangle((20, 20, width - 20, height - 20), radius=30, fill=(30, 35, 50), outline=(80, 150, 255), width=3)
+    draw.rounded_rectangle((40, 40, width - 40, 110), radius=20, fill=(45, 60, 90))
+    draw.text((60, 55), "🏆 QUIZ ARENA SKOR KARTI", font=title_font, fill=(255, 255, 255))
+
+    draw.rounded_rectangle((50, 140, 430, 250), radius=20, fill=(40, 48, 70))
+    draw.text((70, 160), f"🎯 Oyun: {mode_name}", font=big_font, fill=(255, 220, 120))
+    draw.text((70, 205), f"👤 Kazanan: {name}", font=normal_font, fill=(255, 255, 255))
+
+    draw.rounded_rectangle((470, 140, 850, 250), radius=20, fill=(40, 48, 70))
+    draw.text((490, 160), f"⏱️ Süre: {elapsed:.2f} sn", font=big_font, fill=(120, 255, 200))
+    draw.text((490, 205), f"🔥 Streak: {streak}", font=normal_font, fill=(255, 170, 120))
+
+    draw.rounded_rectangle((50, 290, 380, 500), radius=20, fill=(50, 60, 85))
+    draw.text((70, 315), "➕ Kazanılanlar", font=big_font, fill=(255, 255, 255))
+    draw.text((70, 370), f"🏅 Puan: +{points}", font=normal_font, fill=(255, 215, 0))
+    draw.text((70, 410), f"⭐ XP: +{xp}", font=normal_font, fill=(120, 200, 255))
+    draw.text((70, 450), f"💰 Coin: +{coins}", font=normal_font, fill=(120, 255, 120))
+
+    draw.rounded_rectangle((420, 290, 850, 500), radius=20, fill=(50, 60, 85))
+    draw.text((440, 315), "📊 Genel Durum", font=big_font, fill=(255, 255, 255))
+    draw.text((440, 370), f"🏆 Toplam Puan: {total_points}", font=normal_font, fill=(255, 215, 0))
+    draw.text((440, 410), f"🆙 Level: {lvl}", font=normal_font, fill=(120, 200, 255))
+    draw.text((440, 450), "🎮 Quiz Arena", font=small_font, fill=(180, 180, 180))
+
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer
+
+async def send_score_image(chat_id, bot, name, elapsed, points, xp, coins, total_points, lvl, streak, mode_name):
+    img = create_score_image(name, elapsed, points, xp, coins, total_points, lvl, streak, mode_name)
+    await bot.send_photo(chat_id=chat_id, photo=InputFile(img, filename="score.png"))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -408,7 +431,9 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name, total_points, total_xp, total_coins, daily_correct, streak, *_ = profile
             lvl = get_level(total_xp)
 
-            score_text = build_score_card(
+            await send_score_image(
+                chat_id=chat,
+                bot=context.bot,
                 name=name,
                 elapsed=elapsed,
                 points=real_points,
@@ -419,8 +444,6 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 streak=streak,
                 mode_name="❓ Quiz"
             )
-
-            await query.message.reply_text(score_text, parse_mode="Markdown")
             oyunlar[chat]["aktif"] = False
         else:
             await query.message.reply_text("❌ Yanlış cevap!")
@@ -454,12 +477,7 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
     }.get(secim, secim)
 
     await query.message.reply_text(
-        "╔════════════════════╗\n"
-        "🚀 *OYUN BAŞLADI* 🚀\n"
-        "╚════════════════════╝\n\n"
-        f"🎯 Mod: *{kategori_adi}*\n"
-        f"👤 Başlatan: *{user.first_name}*\n"
-        f"🎚️ Zorluk: *{oyunlar[chat]['zorluk'].capitalize()}*",
+        f"🚀 *Oyun Başladı*\n\n🎯 Mod: *{kategori_adi}*\n👤 Başlatan: *{user.first_name}*\n🎚️ Zorluk: *{oyunlar[chat]['zorluk'].capitalize()}*",
         parse_mode="Markdown"
     )
 
@@ -489,23 +507,13 @@ async def soru(chat, app):
 
         k = choose_non_repeating(uygun, used, lambda x: f"kelime:{x}")
         cevap = k
-        soru_text = (
-            f"🔤 *Kelime Oyunu*\n\n"
-            f"🌀 Karışık harfler: `{make_scrambled_word(k)}`\n\n"
-            f"👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n"
-            f"⏳ Süre: *{QUESTION_TIME} sn*"
-        )
+        soru_text = f"🔤 *Kelime Oyunu*\n\n🌀 `{make_scrambled_word(k)}`\n\n👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n⏳ {QUESTION_TIME} saniye"
 
     elif oyun == "plaka":
         item = choose_non_repeating(list(plakalar.items()), used, lambda x: f"plaka:{x[0]}")
         p, s = item
         cevap = s.lower()
-        soru_text = (
-            f"🚗 *Plaka Sorusu*\n\n"
-            f"📍 `{p}` hangi şehir?\n\n"
-            f"👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n"
-            f"⏳ Süre: *{QUESTION_TIME} sn*"
-        )
+        soru_text = f"🚗 *Plaka*\n\n📍 `{p}` hangi şehir?\n\n👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n⏳ {QUESTION_TIME} saniye"
 
     elif oyun == "mat":
         if zorluk == "kolay":
@@ -517,34 +525,19 @@ async def soru(chat, app):
 
         used.append(f"mat:{a}+{b}")
         cevap = str(a + b)
-        soru_text = (
-            f"🧠 *Matematik Sorusu*\n\n"
-            f"➕ `{a} + {b} = ?`\n\n"
-            f"👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n"
-            f"⏳ Süre: *{QUESTION_TIME} sn*"
-        )
+        soru_text = f"🧠 *Matematik*\n\n➕ `{a} + {b} = ?`\n\n👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n⏳ {QUESTION_TIME} saniye"
 
     elif oyun == "emoji":
         item = choose_non_repeating(list(emoji.items()), used, lambda x: f"emoji:{x[0]}")
         e, c = item
         cevap = c.lower()
-        soru_text = (
-            f"😀 *Emoji Tahmini*\n\n"
-            f"{e}\n\n"
-            f"👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n"
-            f"⏳ Süre: *{QUESTION_TIME} sn*"
-        )
+        soru_text = f"😀 *Emoji Tahmini*\n\n{e}\n\n👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n⏳ {QUESTION_TIME} saniye"
 
     elif oyun == "bayrak":
         item = choose_non_repeating(list(bayrak.items()), used, lambda x: f"bayrak:{x[0]}")
         b, c = item
         cevap = c.lower()
-        soru_text = (
-            f"🌍 *Bayrak Tahmini*\n\n"
-            f"{b}\n\n"
-            f"👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n"
-            f"⏳ Süre: *{QUESTION_TIME} sn*"
-        )
+        soru_text = f"🌍 *Bayrak Tahmini*\n\n{b}\n\n👤 Başlatan: *{oyunlar[chat]['starter_name']}*\n⏳ {QUESTION_TIME} saniye"
 
     elif oyun == "quiz":
         q = choose_non_repeating(quizler, used, lambda x: f"quiz:{x['soru']}")
@@ -596,18 +589,9 @@ async def soru(chat, app):
         return
 
     if oyunlar[chat]["aktif"]:
-        mode_name = {
-            "kelime": "🔤 Kelime",
-            "plaka": "🚗 Plaka",
-            "mat": "🧠 Matematik",
-            "emoji": "😀 Emoji",
-            "bayrak": "🌍 Bayrak",
-            "quiz": "❓ Quiz",
-        }.get(oyun, "🎮 Oyun")
-
         await app.bot.send_message(
             chat,
-            build_timeout_card(oyunlar[chat]["cevap"], mode_name),
+            f"⏰ *Süre doldu!*\n✅ Cevap: *{oyunlar[chat]['cevap']}*\n⏭️ Yeni soru geliyor...",
             parse_mode="Markdown"
         )
         oyunlar[chat]["aktif"] = False
@@ -654,7 +638,9 @@ async def mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "bayrak": "🌍 Bayrak",
         }.get(oyunlar[chat].get("oyun"), "🎮 Oyun")
 
-        score_text = build_score_card(
+        await send_score_image(
+            chat_id=chat,
+            bot=context.bot,
             name=name,
             elapsed=elapsed,
             points=real_points,
@@ -666,7 +652,6 @@ async def mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
             mode_name=mode_name
         )
 
-        await update.message.reply_text(score_text, parse_mode="Markdown")
         oyunlar[chat]["aktif"] = False
         return
 
