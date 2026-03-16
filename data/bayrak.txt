@@ -1,5 +1,20 @@
-🇹🇷|türkiye
+🇹🇷|turkiye
 🇩🇪|almanya
 🇫🇷|fransa
 🇮🇹|italya
 🇯🇵|japonya
+🇧🇷|brezilya
+🇦🇷|arjantin
+🇺🇸|amerika
+🇬🇧|ingiltere
+🇪🇸|ispanya
+🇵🇹|portekiz
+🇳🇱|hollanda
+🇧🇪|belcika
+🇨🇦|kanada
+🇲🇽|meksika
+🇷🇺|rusya
+🇺🇦|ukrayna
+🇨🇳|cin
+🇰🇷|guney kore
+🇸🇦|suudi arabistan
