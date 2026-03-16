@@ -1,20 +1,99 @@
-🇹🇷|turkiye
+🇹🇷|türkiye
 🇩🇪|almanya
 🇫🇷|fransa
 🇮🇹|italya
-🇯🇵|japonya
-🇧🇷|brezilya
-🇦🇷|arjantin
-🇺🇸|amerika
-🇬🇧|ingiltere
 🇪🇸|ispanya
 🇵🇹|portekiz
-🇳🇱|hollanda
-🇧🇪|belcika
+🇬🇧|ingiltere
+🇺🇸|amerika
 🇨🇦|kanada
 🇲🇽|meksika
-🇷🇺|rusya
+🇧🇷|brezilya
+🇦🇷|arjantin
+🇨🇱|şili
+🇨🇴|kolombiya
+🇵🇪|peru
+🇺🇾|uruguay
+🇵🇾|paraguay
+🇧🇴|bolivya
+🇻🇪|venezuela
+🇩🇪|almanya
+🇳🇱|hollanda
+🇧🇪|belçika
+🇱🇺|lüksemburg
+🇨🇭|isviçre
+🇦🇹|avusturya
+🇵🇱|polonya
+🇨🇿|çekya
+🇸🇰|slovakya
+🇭🇺|macaristan
+🇷🇴|romanya
+🇧🇬|bulgaristan
+🇬🇷|yunanistan
+🇦🇱|arnavutluk
+🇷🇸|sırbistan
+🇭🇷|hırvatistan
+🇧🇦|bosna hersek
+🇲🇪|karadağ
+🇸🇮|slovenya
+🇲🇰|kuzey makedonya
 🇺🇦|ukrayna
-🇨🇳|cin
-🇰🇷|guney kore
+🇷🇺|rusya
+🇧🇾|belarus
+🇲🇩|moldova
+🇱🇹|litvanya
+🇱🇻|letonya
+🇪🇪|estonya
+🇫🇮|finlandiya
+🇸🇪|isveç
+🇳🇴|norveç
+🇩🇰|danimarka
+🇮🇸|izlanda
+🇮🇪|irlanda
+🇯🇵|japonya
+🇨🇳|çin
+🇰🇷|güney kore
+🇰🇵|kuzey kore
+🇮🇳|hindistan
+🇵🇰|pakistan
+🇧🇩|bangladeş
+🇳🇵|nepal
+🇱🇰|sri lanka
+🇦🇫|afganistan
+🇮🇷|iran
+🇮🇶|irak
+🇸🇾|suriye
+🇱🇧|lübnan
+🇯🇴|ürdün
+🇮🇱|israil
 🇸🇦|suudi arabistan
+🇦🇪|birleşik arap emirlikleri
+🇶🇦|katar
+🇰🇼|kuveyt
+🇴🇲|umman
+🇾🇪|yemen
+🇪🇬|mısır
+🇱🇾|libya
+🇹🇳|tunus
+🇩🇿|cezayir
+🇲🇦|fas
+🇿🇦|güney afrika
+🇳🇬|nijerya
+🇰🇪|kenya
+🇪🇹|etiyopya
+🇸🇩|sudan
+🇸🇴|somali
+🇹🇿|tanzanya
+🇺🇬|uganda
+🇬🇭|gana
+🇨🇲|kamerun
+🇸🇳|senegal
+🇦🇺|avustralya
+🇳🇿|yeni zelanda
+🇮🇩|endonezya
+🇲🇾|malezya
+🇸🇬|singapur
+🇹🇭|tayland
+🇻🇳|vietnam
+🇵🇭|filipinler
+🇲🇳|moğolistan
