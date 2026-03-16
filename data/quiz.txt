@@ -1,0 +1,1 @@
+soru|A|B|C|D|DOGRU_HARF
