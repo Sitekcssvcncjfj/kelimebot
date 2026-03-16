@@ -1,0 +1,7 @@
+elma
+armut
+kitap
+kalem
+bilgisayar
+ankara
+istanbul
