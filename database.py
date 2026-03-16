@@ -27,6 +27,16 @@ def init_db():
     )
     """)
 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS group_scores (
+        chat_id TEXT,
+        user_id TEXT,
+        name TEXT,
+        points INTEGER DEFAULT 0,
+        PRIMARY KEY (chat_id, user_id)
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -55,6 +65,7 @@ def get_profile(user_id, name):
 
 def add_reward(user_id, name, points=5, xp=3, coins=2):
     ensure_user(user_id, name)
+
     conn = get_conn()
     cur = conn.cursor()
 
@@ -63,12 +74,15 @@ def add_reward(user_id, name, points=5, xp=3, coins=2):
     x2_xp = row[0] if row else 0
     x2_coin = row[1] if row else 0
 
+    real_xp = xp
+    real_coins = coins
+
     if x2_xp > 0:
-        xp *= 2
+        real_xp *= 2
         x2_xp -= 1
 
     if x2_coin > 0:
-        coins *= 2
+        real_coins *= 2
         x2_coin -= 1
 
     cur.execute("""
@@ -83,10 +97,12 @@ def add_reward(user_id, name, points=5, xp=3, coins=2):
         x2_xp = ?,
         x2_coin = ?
     WHERE user_id = ?
-    """, (name, points, xp, coins, x2_xp, x2_coin, str(user_id)))
+    """, (name, points, real_xp, real_coins, x2_xp, x2_coin, str(user_id)))
 
     conn.commit()
     conn.close()
+
+    return points, real_xp, real_coins
 
 def get_level(xp):
     return xp // 50 + 1
@@ -233,3 +249,37 @@ def get_achievements(user_id, name):
         achievements.append("🌟 500 XP")
 
     return achievements
+
+def add_group_score(chat_id, user_id, name, points):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    INSERT OR IGNORE INTO group_scores (chat_id, user_id, name, points)
+    VALUES (?, ?, ?, 0)
+    """, (str(chat_id), str(user_id), name))
+
+    cur.execute("""
+    UPDATE group_scores
+    SET name = ?, points = points + ?
+    WHERE chat_id = ? AND user_id = ?
+    """, (name, points, str(chat_id), str(user_id)))
+
+    conn.commit()
+    conn.close()
+
+def get_group_top(chat_id, limit=10):
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    SELECT name, points
+    FROM group_scores
+    WHERE chat_id = ?
+    ORDER BY points DESC
+    LIMIT ?
+    """, (str(chat_id), limit))
+
+    rows = cur.fetchall()
+    conn.close()
+    return rows
