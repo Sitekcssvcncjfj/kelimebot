@@ -194,7 +194,19 @@ def make_scrambled_word(word):
     return mixed
 
 def normalize(text):
-    return text.lower().strip()
+    text = text.lower().strip()
+    replace_map = {
+        "ç": "c",
+        "ğ": "g",
+        "ı": "i",
+        "ö": "o",
+        "ş": "s",
+        "ü": "u",
+        "İ": "i",
+    }
+    for tr, en in replace_map.items():
+        text = text.replace(tr, en)
+    return text
 
 def calc_rewards(elapsed, zorluk):
     base_points = {"kolay": 5, "orta": 8, "zor": 12}
@@ -218,14 +230,23 @@ def calc_rewards(elapsed, zorluk):
 def get_hint_text(category, answer):
     if category == "kelime":
         if len(answer) <= 2:
-            return f"💡 İpucu: Kelime `{answer[0]}` harfi ile başlıyor."
-        return f"💡 İpucu: İlk harf `{answer[0]}` • Son harf `{answer[-1]}` • Uzunluk: `{len(answer)}`"
+            return f"💡 *İpucu*\n\nKelime `{answer[0]}` harfi ile başlıyor."
+        return (
+            f"💡 *İpucu*\n\n"
+            f"🔠 İlk harf: `{answer[0]}`\n"
+            f"🔚 Son harf: `{answer[-1]}`\n"
+            f"📏 Uzunluk: `{len(answer)}`"
+        )
     elif category in ["plaka", "bayrak", "emoji"]:
-        return f"💡 İpucu: İlk harf `{answer[0]}` • Uzunluk: `{len(answer)}`"
+        return (
+            f"💡 *İpucu*\n\n"
+            f"🔠 İlk harf: `{answer[0]}`\n"
+            f"📏 Uzunluk: `{len(answer)}`"
+        )
     elif category == "mat":
-        return "💡 İpucu: Sonuç çift mi tek mi kontrol et."
+        return "💡 *İpucu*\n\nSonucun tek mi çift mi olduğuna dikkat et."
     elif category == "quiz":
-        return "💡 İpucu: Seçenekleri dikkatlice tekrar oku."
+        return "💡 *İpucu*\n\nŞıkları tekrar dikkatlice incele."
     return "💡 İpucu mevcut değil."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -234,35 +255,38 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = [
         [
-            InlineKeyboardButton("🎮 Oyunlar", callback_data="menu_games"),
-            InlineKeyboardButton("👤 Profil", callback_data="menu_profil"),
+            InlineKeyboardButton("🎮 Oyun Menüsü", callback_data="menu_games"),
+            InlineKeyboardButton("👤 Profilim", callback_data="menu_profil"),
         ],
         [
             InlineKeyboardButton("🏆 Liderlik", callback_data="menu_top"),
-            InlineKeyboardButton("🎁 Günlük", callback_data="menu_daily"),
+            InlineKeyboardButton("🎁 Günlük Ödül", callback_data="menu_daily"),
         ],
         [
             InlineKeyboardButton("🛒 Market", callback_data="menu_market"),
             InlineKeyboardButton("🏅 Başarımlar", callback_data="menu_achievements"),
         ],
         [
-            InlineKeyboardButton("📢 Destek Kanalı", url=SUPPORT_URL),
+            InlineKeyboardButton("📢 Destek / Kanal", url=SUPPORT_URL),
         ],
     ]
 
     text = (
-        f"✨ *Hoş geldin, {user.first_name}!* ✨\n\n"
-        f"🎯 *Quiz Arena*'ya giriş yaptın.\n"
-        f"Burada hızını, bilginı ve dikkatini test edebilirsin.\n\n"
-        f"🎲 *Oyun Modları:*\n"
-        f"• 🔤 Kelime\n"
-        f"• 🚗 Plaka\n"
-        f"• 😀 Emoji\n"
-        f"• 🌍 Bayrak\n"
-        f"• 🧠 Matematik\n"
+        f"╔══════════════════╗\n"
+        f"✨ *QUIZ ARENA BOT* ✨\n"
+        f"╚══════════════════╝\n\n"
+        f"👋 Hoş geldin *{user.first_name}*\n\n"
+        f"🎯 Bilgini test et, hızını konuştur,\n"
+        f"🏆 puan topla, ⭐ level atla ve\n"
+        f"💰 coin kazanarak marketten güçlendirmeler al!\n\n"
+        f"🎮 *Aktif Oyun Türleri*\n"
+        f"• 🔤 Kelime Tahmini\n"
+        f"• 🚗 Plaka Bilgisi\n"
+        f"• 😀 Emoji Tahmini\n"
+        f"• 🌍 Bayrak Bilgisi\n"
+        f"• 🧠 Matematik Soruları\n"
         f"• ❓ 4 Şıklı Quiz\n\n"
-        f"💰 Coin kazan, ⭐ XP topla, 🏆 liderliğe yüksel!\n\n"
-        f"👇 Aşağıdaki menüden devam et."
+        f"📌 Aşağıdaki butonlardan birini seçerek başlayabilirsin."
     )
 
     await update.message.reply_text(
@@ -286,23 +310,33 @@ async def oyun_menusu(query):
             InlineKeyboardButton("🧠 Matematik", callback_data="mat"),
         ],
         [
-            InlineKeyboardButton("❓ Quiz", callback_data="quiz"),
+            InlineKeyboardButton("❓ 4 Şıklı Quiz", callback_data="quiz"),
         ],
         [
             InlineKeyboardButton("🟢 Kolay", callback_data="zorluk_kolay"),
             InlineKeyboardButton("🟡 Orta", callback_data="zorluk_orta"),
             InlineKeyboardButton("🔴 Zor", callback_data="zorluk_zor"),
         ],
+        [
+            InlineKeyboardButton("🏠 Ana Menü", callback_data="menu_home"),
+        ]
     ]
 
     text = (
-        "🎮 *Oyun Menüsü*\n\n"
-        "Bir oyun kategorisi seç.\n"
-        "İstersen önce zorluk seviyesini ayarla.\n\n"
-        "Varsayılan zorluk: *kolay*"
+        "🎮 *OYUN MENÜSÜ*\n\n"
+        "İstediğin oyun modunu seç.\n"
+        "Önce zorluk ayarlayabilir, sonra oyunu başlatabilirsin.\n\n"
+        "🎚️ *Zorluklar*\n"
+        "🟢 Kolay → Rahat başlangıç\n"
+        "🟡 Orta → Dengeli oyun\n"
+        "🔴 Zor → Daha az süre, daha yüksek ödül"
     )
 
-    await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    await query.message.reply_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
 
 async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -315,6 +349,38 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "zorluk" not in context.user_data:
         context.user_data["zorluk"] = "kolay"
 
+    if secim == "menu_home":
+        keyboard = [
+            [
+                InlineKeyboardButton("🎮 Oyun Menüsü", callback_data="menu_games"),
+                InlineKeyboardButton("👤 Profilim", callback_data="menu_profil"),
+            ],
+            [
+                InlineKeyboardButton("🏆 Liderlik", callback_data="menu_top"),
+                InlineKeyboardButton("🎁 Günlük Ödül", callback_data="menu_daily"),
+            ],
+            [
+                InlineKeyboardButton("🛒 Market", callback_data="menu_market"),
+                InlineKeyboardButton("🏅 Başarımlar", callback_data="menu_achievements"),
+            ],
+            [
+                InlineKeyboardButton("📢 Destek / Kanal", url=SUPPORT_URL),
+            ],
+        ]
+
+        text = (
+            f"✨ *Hoş geldin, {user.first_name}!* ✨\n\n"
+            f"🎯 *Quiz Arena* ana menüsündesin.\n"
+            f"Bir seçenek seçerek devam edebilirsin."
+        )
+
+        await query.message.reply_text(
+            text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        return
+
     if secim == "menu_games":
         await oyun_menusu(query)
         return
@@ -323,6 +389,78 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
         level = secim.split("_", 1)[1]
         context.user_data["zorluk"] = level
         await query.message.reply_text(f"🎚️ Zorluk ayarlandı: *{level.capitalize()}*", parse_mode="Markdown")
+        return
+
+    if secim == "game_stop":
+        if chat in oyunlar:
+            if "task" in oyunlar[chat] and oyunlar[chat]["task"]:
+                oyunlar[chat]["task"].cancel()
+            del oyunlar[chat]
+        await query.message.reply_text("🛑 Oyun durduruldu.")
+        return
+
+    if secim == "game_hint":
+        if chat not in oyunlar or not oyunlar[chat]["aktif"]:
+            await query.message.reply_text("❌ Aktif bir soru yok.")
+            return
+
+        if oyunlar[chat]["hint_used"]:
+            await query.message.reply_text("❌ Bu soru için zaten ipucu kullandın.")
+            return
+
+        ok = use_hint(user.id, user.first_name)
+        if not ok:
+            await query.message.reply_text("❌ İpucu hakkın yok. Marketten satın alabilirsin.")
+            return
+
+        oyun = oyunlar[chat].get("oyun", oyunlar[chat]["kategori"])
+        cevap = oyunlar[chat]["cevap"]
+        hint = get_hint_text(oyun, cevap)
+        oyunlar[chat]["hint_used"] = True
+
+        await query.message.reply_text(hint, parse_mode="Markdown")
+        return
+
+    if secim.startswith("quiz_"):
+        if chat not in oyunlar or not oyunlar[chat]["aktif"]:
+            await query.message.reply_text("❌ Aktif quiz sorusu yok.")
+            return
+
+        if oyunlar[chat].get("oyun") != "quiz":
+            await query.message.reply_text("❌ Şu an aktif soru quiz değil.")
+            return
+
+        verilen = secim.split("_", 1)[1].upper()
+        cevap = oyunlar[chat]["cevap"].upper()
+
+        if verilen == cevap:
+            elapsed = time.time() - oyunlar[chat]["baslangic"]
+            zorluk = oyunlar[chat].get("zorluk", "kolay")
+            points, xp, coins = calc_rewards(elapsed, zorluk)
+
+            add_reward(user.id, user.first_name, points, xp, coins)
+
+            profile = get_profile(user.id, user.first_name)
+            name, total_points, total_xp, total_coins, daily_correct, streak, total_correct, last_daily, hint_count, x2_xp, x2_coin = profile
+            lvl = get_level(total_xp)
+
+            await query.message.reply_text(
+                f"🎉 *{name}* doğru şıkkı seçti!\n\n"
+                f"⏱️ Süre: `{elapsed:.2f}` sn\n"
+                f"🏆 Puan: `+{points}`\n"
+                f"⭐ XP: `+{xp}`\n"
+                f"💰 Coin: `+{coins}`\n\n"
+                f"📊 *Durumun*\n"
+                f"🏅 Toplam Puan: `{total_points}`\n"
+                f"🆙 Level: `{lvl}`\n"
+                f"🔥 Streak: `{streak}`",
+                parse_mode="Markdown"
+            )
+
+            oyunlar[chat]["aktif"] = False
+        else:
+            await query.message.reply_text("❌ Yanlış cevap! Tekrar dene.")
+
         return
 
     if secim == "menu_profil":
@@ -384,6 +522,7 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💡 İpucu Al", callback_data="buy_hint")],
             [InlineKeyboardButton("⚡ x2 XP Al", callback_data="buy_x2_xp")],
             [InlineKeyboardButton("💸 x2 Coin Al", callback_data="buy_x2_coin")],
+            [InlineKeyboardButton("🏠 Ana Menü", callback_data="menu_home")],
         ]
         await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
@@ -530,7 +669,7 @@ async def soru(chat, app):
             f"🅱️ {secenekler[1]}\n"
             f"🇨 {secenekler[2]}\n"
             f"🇩 {secenekler[3]}\n\n"
-            f"✍️ Cevabı sadece `A`, `B`, `C` veya `D` olarak yaz."
+            f"👇 Aşağıdaki butonlardan birine bas."
         )
 
     if not cevap:
@@ -544,7 +683,43 @@ async def soru(chat, app):
     oyunlar[chat]["oyun"] = oyun
     oyunlar[chat]["hint_used"] = False
 
-    await app.bot.send_message(chat, soru_text, parse_mode="Markdown")
+    if oyun == "quiz":
+        keyboard = [
+            [
+                InlineKeyboardButton("🅰️ A", callback_data="quiz_A"),
+                InlineKeyboardButton("🅱️ B", callback_data="quiz_B"),
+            ],
+            [
+                InlineKeyboardButton("🇨 C", callback_data="quiz_C"),
+                InlineKeyboardButton("🇩 D", callback_data="quiz_D"),
+            ],
+            [
+                InlineKeyboardButton("💡 İpucu", callback_data="game_hint"),
+                InlineKeyboardButton("🛑 Durdur", callback_data="game_stop"),
+            ]
+        ]
+        await app.bot.send_message(
+            chat,
+            soru_text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    else:
+        keyboard = [
+            [
+                InlineKeyboardButton("💡 İpucu", callback_data="game_hint"),
+                InlineKeyboardButton("🛑 Durdur", callback_data="game_stop"),
+            ],
+            [
+                InlineKeyboardButton("🏠 Ana Menü", callback_data="menu_home"),
+            ]
+        ]
+        await app.bot.send_message(
+            chat,
+            soru_text,
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
     sleep_time = QUESTION_TIME
     if zorluk == "orta":
@@ -581,6 +756,9 @@ async def mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not oyunlar[chat]["aktif"]:
         return
     if not update.message or not update.message.text:
+        return
+
+    if oyunlar[chat].get("oyun") == "quiz":
         return
 
     text = normalize(update.message.text)
