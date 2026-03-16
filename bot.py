@@ -33,6 +33,7 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 QUESTION_TIME = int(os.getenv("QUESTION_TIME", 15))
 SUPPORT_URL = os.getenv("SUPPORT_URL", "https://t.me/telegram")
+BOT_USERNAME = os.getenv("BOT_USERNAME", "YourBotUsername")
 
 if not TOKEN:
     raise ValueError("BOT_TOKEN bulunamadı. .env dosyasını kontrol et.")
@@ -249,9 +250,45 @@ def get_hint_text(category, answer):
         return "💡 *İpucu*\n\nŞıkları tekrar dikkatlice incele."
     return "💡 İpucu mevcut değil."
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    ensure_user(user.id, user.first_name)
+def main_menu_text(user_name, is_group=False):
+    if is_group:
+        return (
+            f"╔══════════════════╗\n"
+            f"✨ *QUIZ ARENA BOT* ✨\n"
+            f"╚══════════════════╝\n\n"
+            f"👋 Merhaba *{user_name}*\n\n"
+            f"🎉 Bu grup için oyun menüsüne hoş geldiniz.\n"
+            f"Burada herkes oyunu başlatabilir ve sorulara katılabilir.\n\n"
+            f"🎮 *Oyun Türleri*\n"
+            f"• 🔤 Kelime Tahmini\n"
+            f"• 🚗 Plaka Bilgisi\n"
+            f"• 😀 Emoji Tahmini\n"
+            f"• 🌍 Bayrak Bilgisi\n"
+            f"• 🧠 Matematik\n"
+            f"• ❓ 4 Şıklı Quiz\n\n"
+            f"👇 Aşağıdan devam edin."
+        )
+    else:
+        return (
+            f"╔══════════════════╗\n"
+            f"✨ *QUIZ ARENA BOT* ✨\n"
+            f"╚══════════════════╝\n\n"
+            f"👋 Hoş geldin *{user_name}*\n\n"
+            f"🎯 Bilgini test et, hızını konuştur,\n"
+            f"🏆 puan topla, ⭐ level atla ve\n"
+            f"💰 coin kazanarak marketten güçlendirmeler al!\n\n"
+            f"🎮 *Aktif Oyun Türleri*\n"
+            f"• 🔤 Kelime Tahmini\n"
+            f"• 🚗 Plaka Bilgisi\n"
+            f"• 😀 Emoji Tahmini\n"
+            f"• 🌍 Bayrak Bilgisi\n"
+            f"• 🧠 Matematik Soruları\n"
+            f"• ❓ 4 Şıklı Quiz\n\n"
+            f"📌 Aşağıdaki butonlardan birini seçerek başlayabilirsin."
+        )
+
+def build_main_menu():
+    add_to_group_url = f"https://t.me/{BOT_USERNAME}?startgroup=true"
 
     keyboard = [
         [
@@ -267,31 +304,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("🏅 Başarımlar", callback_data="menu_achievements"),
         ],
         [
+            InlineKeyboardButton("➕ Beni Gruba Ekle", url=add_to_group_url),
+        ],
+        [
             InlineKeyboardButton("📢 Destek / Kanal", url=SUPPORT_URL),
         ],
     ]
+    return InlineKeyboardMarkup(keyboard)
 
-    text = (
-        f"╔══════════════════╗\n"
-        f"✨ *QUIZ ARENA BOT* ✨\n"
-        f"╚══════════════════╝\n\n"
-        f"👋 Hoş geldin *{user.first_name}*\n\n"
-        f"🎯 Bilgini test et, hızını konuştur,\n"
-        f"🏆 puan topla, ⭐ level atla ve\n"
-        f"💰 coin kazanarak marketten güçlendirmeler al!\n\n"
-        f"🎮 *Aktif Oyun Türleri*\n"
-        f"• 🔤 Kelime Tahmini\n"
-        f"• 🚗 Plaka Bilgisi\n"
-        f"• 😀 Emoji Tahmini\n"
-        f"• 🌍 Bayrak Bilgisi\n"
-        f"• 🧠 Matematik Soruları\n"
-        f"• ❓ 4 Şıklı Quiz\n\n"
-        f"📌 Aşağıdaki butonlardan birini seçerek başlayabilirsin."
-    )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    chat = update.effective_chat
+    ensure_user(user.id, user.first_name)
+
+    is_group = chat.type in ["group", "supergroup"]
 
     await update.message.reply_text(
-        text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        main_menu_text(user.first_name, is_group=is_group),
+        reply_markup=build_main_menu(),
         parse_mode="Markdown"
     )
 
@@ -345,38 +375,15 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = query.message.chat.id
     secim = query.data
     user = update.effective_user
+    chat_type = query.message.chat.type
 
     if "zorluk" not in context.user_data:
         context.user_data["zorluk"] = "kolay"
 
     if secim == "menu_home":
-        keyboard = [
-            [
-                InlineKeyboardButton("🎮 Oyun Menüsü", callback_data="menu_games"),
-                InlineKeyboardButton("👤 Profilim", callback_data="menu_profil"),
-            ],
-            [
-                InlineKeyboardButton("🏆 Liderlik", callback_data="menu_top"),
-                InlineKeyboardButton("🎁 Günlük Ödül", callback_data="menu_daily"),
-            ],
-            [
-                InlineKeyboardButton("🛒 Market", callback_data="menu_market"),
-                InlineKeyboardButton("🏅 Başarımlar", callback_data="menu_achievements"),
-            ],
-            [
-                InlineKeyboardButton("📢 Destek / Kanal", url=SUPPORT_URL),
-            ],
-        ]
-
-        text = (
-            f"✨ *Hoş geldin, {user.first_name}!* ✨\n\n"
-            f"🎯 *Quiz Arena* ana menüsündesin.\n"
-            f"Bir seçenek seçerek devam edebilirsin."
-        )
-
         await query.message.reply_text(
-            text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            main_menu_text(user.first_name, is_group=chat_type in ["group", "supergroup"]),
+            reply_markup=build_main_menu(),
             parse_mode="Markdown"
         )
         return
@@ -606,12 +613,22 @@ async def soru(chat, app):
 
         k = random.choice(uygun).lower()
         cevap = k
-        soru_text = f"🔤 *Kelime Oyunu*\n\n🌀 Karışık harfler: `{make_scrambled_word(k)}`\n\n⏳ Süren başladı!"
+        soru_text = (
+            f"🔤 *Kelime Oyunu*\n\n"
+            f"🌀 Karışık harfler: `{make_scrambled_word(k)}`\n\n"
+            f"👥 Gruptan ilk doğru yazan kazanır!\n"
+            f"⏳ Süren başladı!"
+        )
 
     elif oyun == "plaka":
         p, s = random.choice(list(plakalar.items()))
         cevap = s.lower()
-        soru_text = f"🚗 *Plaka Sorusu*\n\n📍 `{p}` plakası hangi şehre ait?\n\n⏳ Süren başladı!"
+        soru_text = (
+            f"🚗 *Plaka Sorusu*\n\n"
+            f"📍 `{p}` plakası hangi şehre ait?\n\n"
+            f"👥 Gruptan ilk doğru yazan kazanır!\n"
+            f"⏳ Süren başladı!"
+        )
 
     elif oyun == "mat":
         if zorluk == "kolay":
@@ -624,7 +641,12 @@ async def soru(chat, app):
             a = random.randint(50, 200)
             b = random.randint(50, 200)
         cevap = str(a + b)
-        soru_text = f"🧠 *Matematik Sorusu*\n\n➕ `{a} + {b} = ?`\n\n⏳ Süren başladı!"
+        soru_text = (
+            f"🧠 *Matematik Sorusu*\n\n"
+            f"➕ `{a} + {b} = ?`\n\n"
+            f"👥 Gruptan ilk doğru yazan kazanır!\n"
+            f"⏳ Süren başladı!"
+        )
 
     elif oyun == "emoji":
         if not emoji:
@@ -636,7 +658,12 @@ async def soru(chat, app):
 
         e, c = random.choice(list(emoji.items()))
         cevap = c.lower()
-        soru_text = f"😀 *Emoji Tahmini*\n\n{e}\n\n❓ Bu neyi anlatıyor?"
+        soru_text = (
+            f"😀 *Emoji Tahmini*\n\n"
+            f"{e}\n\n"
+            f"👥 Gruptan ilk doğru yazan kazanır!\n"
+            f"❓ Bu neyi anlatıyor?"
+        )
 
     elif oyun == "bayrak":
         if not bayrak:
@@ -648,7 +675,12 @@ async def soru(chat, app):
 
         b, c = random.choice(list(bayrak.items()))
         cevap = c.lower()
-        soru_text = f"🌍 *Bayrak Tahmini*\n\n{b}\n\n❓ Bu hangi ülke?"
+        soru_text = (
+            f"🌍 *Bayrak Tahmini*\n\n"
+            f"{b}\n\n"
+            f"👥 Gruptan ilk doğru yazan kazanır!\n"
+            f"❓ Bu hangi ülke?"
+        )
 
     elif oyun == "quiz":
         if not quizler:
@@ -669,7 +701,7 @@ async def soru(chat, app):
             f"🅱️ {secenekler[1]}\n"
             f"🇨 {secenekler[2]}\n"
             f"🇩 {secenekler[3]}\n\n"
-            f"👇 Aşağıdaki butonlardan birine bas."
+            f"👥 Gruptan ilk doğru butona basan kazanır!"
         )
 
     if not cevap:
@@ -923,7 +955,9 @@ async def yardim(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "💡 /ipucu - Aktif soru için ipucu kullan\n"
         "🏅 /basarim - Başarımlarını gör\n"
         "🛑 /son - Oyunu durdur\n"
-        "❓ /yardim - Yardım menüsü",
+        "❓ /yardim - Yardım menüsü\n\n"
+        "👥 Bu bot gruplarda da çalışır.\n"
+        "Grupta herkes oyunu başlatabilir ve cevap verebilir.",
         parse_mode="Markdown"
     )
 
@@ -948,7 +982,7 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mesaj))
 
     print("🔥 BOT AKTİF 🔥")
-    app.run_polling()
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
