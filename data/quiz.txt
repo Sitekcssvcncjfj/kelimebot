@@ -1,1 +1,52 @@
-soru|A|B|C|D|DOGRU_HARF
+Türkiye'nin başkenti neresidir?|İstanbul|Ankara|İzmir|Bursa|B
+Dünyanın en büyük okyanusu hangisidir?|Atlas Okyanusu|Hint Okyanusu|Pasifik Okyanusu|Arktik Okyanusu|C
+5 + 7 kaç eder?|10|11|12|13|C
+Türk bayrağının rengi nedir?|Mavi-beyaz|Kırmızı-beyaz|Yeşil-sarı|Siyah-kırmızı|B
+En büyük gezegen hangisidir?|Mars|Venüs|Jüpiter|Satürn|C
+İnsan vücudunda kaç kalp vardır?|1|2|3|4|A
+Su kaç derecede donar?|0|50|100|10|A
+Türkiye kaç coğrafi bölgeye ayrılır?|5|6|7|8|C
+Dünyanın uydusu hangisidir?|Mars|Ay|Venüs|Güneş|B
+Cumhuriyet hangi yılda ilan edildi?|1920|1921|1922|1923|D
+İstiklal Marşı'nın yazarı kimdir?|Namık Kemal|Mehmet Akif Ersoy|Tevfik Fikret|Yahya Kemal|B
+Aşağıdakilerden hangisi meyvedir?|Havuç|Patates|Elma|Soğan|C
+Aşağıdakilerden hangisi sebzedir?|Muz|Kiraz|Patlıcan|Üzüm|C
+2 x 8 kaç eder?|14|16|18|20|B
+9 x 9 kaç eder?|72|81|99|90|B
+Bir yılda kaç ay vardır?|10|11|12|13|C
+Haftada kaç gün vardır?|5|6|7|8|C
+Türkiye'nin en kalabalık şehri hangisidir?|Ankara|İstanbul|İzmir|Bursa|B
+Aşağıdakilerden hangisi hayvandır?|Masa|Kedi|Kalem|Kitap|B
+Aşağıdakilerden hangisi bir taşıttır?|Armut|Otobüs|Bulut|Kalem|B
+Gökyüzü genelde ne renktir?|Kırmızı|Sarı|Mavi|Pembe|C
+Bir saatte kaç dakika vardır?|30|60|90|120|B
+Bir dakikada kaç saniye vardır?|30|45|60|90|C
+İlkbahardan sonra hangi mevsim gelir?|Kış|Sonbahar|Yaz|İlkbahar|C
+Kıştan sonra hangi mevsim gelir?|Yaz|İlkbahar|Sonbahar|Kış|B
+Aşağıdakilerden hangisi bir içecektir?|Çorba|Kahve|Pilav|Köfte|B
+Türkiye'nin para birimi nedir?|Euro|Dolar|Lira|Sterlin|C
+Aşağıdakilerden hangisi okul eşyasıdır?|Defter|Tencere|Yastık|Çatal|A
+Aşağıdakilerden hangisi elektronik cihazdır?|Bilgisayar|Yorgan|Kaşık|Perde|A
+Ormanın kralı olarak bilinen hayvan hangisidir?|Fil|Aslan|Zebra|İnek|B
+Penguenler genelde nerede yaşar?|Çölde|Kutup bölgesinde|Ormanda|Dağda|B
+En hızlı kara hayvanı hangisidir?|Kaplumbağa|Çita|Fil|At|B
+Aşağıdakilerden hangisi bir spor dalıdır?|Basketbol|Battaniye|Tencere|Dolap|A
+Futbolda top nereye girerse gol olur?|Kovaya|Kaleye|Masaya|Sepete|B
+Basketbolda sayı kazanmak için top nereye atılır?|Kale|Sepet|Kutu|Masa|B
+Güneş doğudan doğar mı?|Evet|Hayır|Bazen|Bilinmez|A
+Türkiye Asya ve Avrupa kıtalarında mı yer alır?|Evet|Hayır|Sadece Asya|Sadece Avrupa|A
+Aşağıdakilerden hangisi bir ülke değildir?|Türkiye|Almanya|İstanbul|Japonya|C
+Aşağıdakilerden hangisi bir şehir ismidir?|Kalem|Ankara|Defter|Masa|B
+1 kilogram kaç gramdır?|100|500|1000|1500|C
+Aşağıdakilerden hangisi sıcak içecektir?|Ayran|Kahve|Gazoz|Meyve suyu|B
+Aşağıdakilerden hangisi tatlıdır?|Baklava|Çorba|Pilav|Salata|A
+Aşağıdakilerden hangisi ulaşım aracıdır?|Tren|Bardak|Yorgan|Bıçak|A
+Dinozorlar günümüzde yaşar mı?|Evet|Hayır|Sadece Afrika'da|Sadece Asya'da|B
+Aşağıdakilerden hangisi bir meslektir?|Doktor|Defter|Televizyon|Kalem|A
+Aşağıdakilerden hangisi bir duyu organıdır?|Kulak|Yastık|Masa|Kapı|A
+Aşağıdakilerden hangisi bir renk değildir?|Mavi|Kırmızı|Hızlı|Yeşil|C
+Dünyanın şekli nasıldır?|Kare|Üçgen|Yuvarlak|Dikdörtgen|C
+Hangi hayvan süt verir?|İnek|Aslan|Kartal|Balık|A
+Aşağıdakilerden hangisi bir yaz mevsimi meyvesidir?|Karpuz|Kestane|Portakal|Mandalina|A
+Aşağıdakilerden hangisi kış meyvesidir?|Karpuz|Üzüm|Portakal|Kiraz|C
+1 düzine kaç tanedir?|6|10|12|24|C
