@@ -2,6 +2,7 @@ import os
 import random
 import asyncio
 import time
+from pathlib import Path
 from dotenv import load_dotenv
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,39 +15,131 @@ from telegram.ext import (
     filters,
 )
 
-from database import init_db, ensure_user, add_reward, get_profile, top_users, level_from_xp
+from database import (
+    init_db,
+    ensure_user,
+    add_reward,
+    get_profile,
+    top_users,
+    get_level,
+    claim_daily,
+    buy_item,
+    use_hint,
+    get_achievements,
+)
 
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
 QUESTION_TIME = int(os.getenv("QUESTION_TIME", 15))
+SUPPORT_URL = os.getenv("SUPPORT_URL", "https://t.me/telegram")
 
 if not TOKEN:
     raise ValueError("BOT_TOKEN bulunamadı. .env dosyasını kontrol et.")
 
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+
 oyunlar = {}
 
 plakalar = {
-    "34": "istanbul",
-    "06": "ankara",
-    "35": "izmir",
-    "16": "bursa",
-    "07": "antalya",
     "01": "adana",
+    "02": "adiyaman",
+    "03": "afyonkarahisar",
+    "04": "agri",
+    "05": "amasya",
+    "06": "ankara",
+    "07": "antalya",
+    "08": "artvin",
+    "09": "aydin",
+    "10": "balikesir",
+    "11": "bilecik",
+    "12": "bingol",
+    "13": "bitlis",
+    "14": "bolu",
+    "15": "burdur",
+    "16": "bursa",
+    "17": "canakkale",
+    "18": "cankiri",
+    "19": "corum",
+    "20": "denizli",
+    "21": "diyarbakir",
+    "22": "edirne",
+    "23": "elazig",
+    "24": "erzincan",
+    "25": "erzurum",
+    "26": "eskisehir",
     "27": "gaziantep",
+    "28": "giresun",
+    "29": "gumushane",
+    "30": "hakkari",
+    "31": "hatay",
+    "32": "isparta",
+    "33": "mersin",
+    "34": "istanbul",
+    "35": "izmir",
+    "36": "kars",
+    "37": "kastamonu",
+    "38": "kayseri",
+    "39": "kirklareli",
+    "40": "kirsehir",
     "41": "kocaeli",
-    "55": "samsun"
+    "42": "konya",
+    "43": "kutahya",
+    "44": "malatya",
+    "45": "manisa",
+    "46": "kahramanmaras",
+    "47": "mardin",
+    "48": "mugla",
+    "49": "mus",
+    "50": "nevsehir",
+    "51": "nigde",
+    "52": "ordu",
+    "53": "rize",
+    "54": "sakarya",
+    "55": "samsun",
+    "56": "siirt",
+    "57": "sinop",
+    "58": "sivas",
+    "59": "tekirdag",
+    "60": "tokat",
+    "61": "trabzon",
+    "62": "tunceli",
+    "63": "sanliurfa",
+    "64": "usak",
+    "65": "van",
+    "66": "yozgat",
+    "67": "zonguldak",
+    "68": "aksaray",
+    "69": "bayburt",
+    "70": "karaman",
+    "71": "kirikkale",
+    "72": "batman",
+    "73": "sirnak",
+    "74": "bartin",
+    "75": "ardahan",
+    "76": "igdir",
+    "77": "yalova",
+    "78": "karabuk",
+    "79": "kilis",
+    "80": "osmaniye",
+    "81": "duzce"
 }
 
 def load_words():
+    path = DATA_DIR / "kelimeler.txt"
     try:
-        with open("data/kelimeler.txt", encoding="utf-8") as f:
-            return [x.strip() for x in f if x.strip()]
+        with open(path, encoding="utf-8") as f:
+            words = [x.strip().lower() for x in f if x.strip()]
+            print(f"Kelime sayısı yüklendi: {len(words)}")
+            return words
     except FileNotFoundError:
+        print(f"HATA: {path} bulunamadı")
         return []
 
-def load_pairs(path):
+def load_pairs(filename):
     items = {}
+    path = DATA_DIR / filename
     try:
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -54,14 +147,41 @@ def load_pairs(path):
                 if not line or "|" not in line:
                     continue
                 q, a = line.split("|", 1)
-                items[q.strip()] = a.strip().lower()
+                q = q.strip()
+                a = a.strip().lower()
+                if q and a:
+                    items[q] = a
+        print(f"{filename} yüklendi: {len(items)} kayıt")
     except FileNotFoundError:
-        pass
+        print(f"HATA: {path} bulunamadı")
     return items
 
+def load_quiz():
+    path = DATA_DIR / "quiz.txt"
+    questions = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or "|" not in line:
+                    continue
+                parts = line.split("|")
+                if len(parts) == 6:
+                    soru, a, b, c, d, dogru = parts
+                    questions.append({
+                        "soru": soru.strip(),
+                        "secenekler": [a.strip(), b.strip(), c.strip(), d.strip()],
+                        "dogru": dogru.strip().upper()
+                    })
+        print(f"quiz.txt yüklendi: {len(questions)} kayıt")
+    except FileNotFoundError:
+        print(f"HATA: {path} bulunamadı")
+    return questions
+
 kelimeler = load_words()
-emoji = load_pairs("data/emoji.txt")
-bayrak = load_pairs("data/bayrak.txt")
+emoji = load_pairs("emoji.txt")
+bayrak = load_pairs("bayrak.txt")
+quizler = load_quiz()
 
 def make_scrambled_word(word):
     if len(word) <= 1:
@@ -73,36 +193,116 @@ def make_scrambled_word(word):
         tries += 1
     return mixed
 
-def calc_rewards(elapsed):
+def normalize(text):
+    return text.lower().strip()
+
+def calc_rewards(elapsed, zorluk):
+    base_points = {"kolay": 5, "orta": 8, "zor": 12}
+    base_xp = {"kolay": 3, "orta": 5, "zor": 8}
+    base_coin = {"kolay": 2, "orta": 3, "zor": 5}
+
+    points = base_points.get(zorluk, 5)
+    xp = base_xp.get(zorluk, 3)
+    coin = base_coin.get(zorluk, 2)
+
     if elapsed <= 3:
-        return 10, 8, 5
+        points += 3
+        xp += 2
+        coin += 1
     elif elapsed <= 7:
-        return 7, 5, 3
-    return 5, 3, 2
+        points += 1
+        xp += 1
+
+    return points, xp, coin
+
+def get_hint_text(category, answer):
+    if category == "kelime":
+        if len(answer) <= 2:
+            return f"💡 İpucu: Kelime `{answer[0]}` harfi ile başlıyor."
+        return f"💡 İpucu: İlk harf `{answer[0]}` • Son harf `{answer[-1]}` • Uzunluk: `{len(answer)}`"
+    elif category in ["plaka", "bayrak", "emoji"]:
+        return f"💡 İpucu: İlk harf `{answer[0]}` • Uzunluk: `{len(answer)}`"
+    elif category == "mat":
+        return "💡 İpucu: Sonuç çift mi tek mi kontrol et."
+    elif category == "quiz":
+        return "💡 İpucu: Seçenekleri dikkatlice tekrar oku."
+    return "💡 İpucu mevcut değil."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     ensure_user(user.id, user.first_name)
 
     keyboard = [
-        [InlineKeyboardButton("🎮 Karışık", callback_data="karisik")],
-        [InlineKeyboardButton("🔤 Kelime", callback_data="kelime")],
-        [InlineKeyboardButton("🚗 Plaka", callback_data="plaka")],
-        [InlineKeyboardButton("😀 Emoji", callback_data="emoji")],
-        [InlineKeyboardButton("🌍 Bayrak", callback_data="bayrak")],
-        [InlineKeyboardButton("🧠 Matematik", callback_data="mat")],
+        [
+            InlineKeyboardButton("🎮 Oyunlar", callback_data="menu_games"),
+            InlineKeyboardButton("👤 Profil", callback_data="menu_profil"),
+        ],
+        [
+            InlineKeyboardButton("🏆 Liderlik", callback_data="menu_top"),
+            InlineKeyboardButton("🎁 Günlük", callback_data="menu_daily"),
+        ],
+        [
+            InlineKeyboardButton("🛒 Market", callback_data="menu_market"),
+            InlineKeyboardButton("🏅 Başarımlar", callback_data="menu_achievements"),
+        ],
+        [
+            InlineKeyboardButton("📢 Destek Kanalı", url=SUPPORT_URL),
+        ],
     ]
 
     text = (
-        "🎮 Oyun seç\n\n"
-        "Komutlar:\n"
-        "/start - menü\n"
-        "/profil - profilin\n"
-        "/top - liderlik\n"
-        "/son - oyunu durdur"
+        f"✨ *Hoş geldin, {user.first_name}!* ✨\n\n"
+        f"🎯 *Quiz Arena*'ya giriş yaptın.\n"
+        f"Burada hızını, bilginı ve dikkatini test edebilirsin.\n\n"
+        f"🎲 *Oyun Modları:*\n"
+        f"• 🔤 Kelime\n"
+        f"• 🚗 Plaka\n"
+        f"• 😀 Emoji\n"
+        f"• 🌍 Bayrak\n"
+        f"• 🧠 Matematik\n"
+        f"• ❓ 4 Şıklı Quiz\n\n"
+        f"💰 Coin kazan, ⭐ XP topla, 🏆 liderliğe yüksel!\n\n"
+        f"👇 Aşağıdaki menüden devam et."
     )
 
-    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="Markdown"
+    )
+
+async def oyun_menusu(query):
+    keyboard = [
+        [
+            InlineKeyboardButton("🎲 Karışık", callback_data="karisik"),
+            InlineKeyboardButton("🔤 Kelime", callback_data="kelime"),
+        ],
+        [
+            InlineKeyboardButton("🚗 Plaka", callback_data="plaka"),
+            InlineKeyboardButton("😀 Emoji", callback_data="emoji"),
+        ],
+        [
+            InlineKeyboardButton("🌍 Bayrak", callback_data="bayrak"),
+            InlineKeyboardButton("🧠 Matematik", callback_data="mat"),
+        ],
+        [
+            InlineKeyboardButton("❓ Quiz", callback_data="quiz"),
+        ],
+        [
+            InlineKeyboardButton("🟢 Kolay", callback_data="zorluk_kolay"),
+            InlineKeyboardButton("🟡 Orta", callback_data="zorluk_orta"),
+            InlineKeyboardButton("🔴 Zor", callback_data="zorluk_zor"),
+        ],
+    ]
+
+    text = (
+        "🎮 *Oyun Menüsü*\n\n"
+        "Bir oyun kategorisi seç.\n"
+        "İstersen önce zorluk seviyesini ayarla.\n\n"
+        "Varsayılan zorluk: *kolay*"
+    )
+
+    await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -110,6 +310,101 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat = query.message.chat.id
     secim = query.data
+    user = update.effective_user
+
+    if "zorluk" not in context.user_data:
+        context.user_data["zorluk"] = "kolay"
+
+    if secim == "menu_games":
+        await oyun_menusu(query)
+        return
+
+    if secim.startswith("zorluk_"):
+        level = secim.split("_", 1)[1]
+        context.user_data["zorluk"] = level
+        await query.message.reply_text(f"🎚️ Zorluk ayarlandı: *{level.capitalize()}*", parse_mode="Markdown")
+        return
+
+    if secim == "menu_profil":
+        profile = get_profile(user.id, user.first_name)
+        name, points, xp, coins, daily_correct, streak, total_correct, last_daily, hint_count, x2_xp, x2_coin = profile
+        lvl = get_level(xp)
+
+        await query.message.reply_text(
+            f"👤 *Profilin*\n\n"
+            f"🙍 İsim: *{name}*\n"
+            f"🏆 Puan: `{points}`\n"
+            f"⭐ XP: `{xp}`\n"
+            f"🆙 Level: `{lvl}`\n"
+            f"💰 Coin: `{coins}`\n"
+            f"🔥 Streak: `{streak}`\n"
+            f"💡 İpucu Hakkı: `{hint_count}`\n"
+            f"⚡ x2 XP Hakkı: `{x2_xp}`\n"
+            f"💸 x2 Coin Hakkı: `{x2_coin}`\n"
+            f"✅ Günlük Doğru: `{daily_correct}`\n"
+            f"📚 Toplam Doğru: `{total_correct}`",
+            parse_mode="Markdown"
+        )
+        return
+
+    if secim == "menu_top":
+        rows = top_users(10)
+        if not rows:
+            await query.message.reply_text("🏆 Henüz liderlik verisi yok.")
+            return
+
+        text = "🏆 *Liderlik Tablosu*\n\n"
+        medals = ["🥇", "🥈", "🥉"]
+        for i, (name, points) in enumerate(rows, start=1):
+            medal = medals[i - 1] if i <= 3 else f"{i}."
+            text += f"{medal} {name} — *{points}* puan\n"
+
+        await query.message.reply_text(text, parse_mode="Markdown")
+        return
+
+    if secim == "menu_daily":
+        ok, remain = claim_daily(user.id, user.first_name)
+        if ok:
+            await query.message.reply_text("🎁 Günlük ödül alındı!\n💰 +25 coin\n⭐ +10 XP")
+        else:
+            saat = remain // 3600
+            dakika = (remain % 3600) // 60
+            await query.message.reply_text(f"⏳ Günlük ödül için beklemen gerekiyor.\nYaklaşık: {saat} saat {dakika} dakika")
+        return
+
+    if secim == "menu_market":
+        text = (
+            "🛒 *Market*\n\n"
+            "1. 💡 İpucu — 10 coin\n"
+            "2. ⚡ x2 XP (5 soru) — 50 coin\n"
+            "3. 💸 x2 Coin (5 soru) — 50 coin\n\n"
+            "Satın almak için aşağıdaki butonları kullan."
+        )
+        keyboard = [
+            [InlineKeyboardButton("💡 İpucu Al", callback_data="buy_hint")],
+            [InlineKeyboardButton("⚡ x2 XP Al", callback_data="buy_x2_xp")],
+            [InlineKeyboardButton("💸 x2 Coin Al", callback_data="buy_x2_coin")],
+        ]
+        await query.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if secim == "menu_achievements":
+        achievements = get_achievements(user.id, user.first_name)
+        if not achievements:
+            text = "🏅 Henüz başarım açmadın."
+        else:
+            text = "🏅 *Başarımların*\n\n" + "\n".join(f"• {a}" for a in achievements)
+        await query.message.reply_text(text, parse_mode="Markdown")
+        return
+
+    if secim.startswith("buy_"):
+        item = secim.replace("buy_", "")
+        success, msg = buy_item(user.id, user.first_name, item)
+        if success:
+            await query.message.reply_text(f"✅ Satın alma başarılı: `{item}`", parse_mode="Markdown")
+        else:
+            await query.message.reply_text(f"❌ {msg}")
+        return
 
     if chat in oyunlar and "task" in oyunlar[chat]:
         oyunlar[chat]["task"].cancel()
@@ -121,9 +416,24 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "baslangic": None,
         "task": None,
         "qid": 0,
+        "zorluk": context.user_data.get("zorluk", "kolay"),
+        "hint_used": False,
     }
 
-    await query.message.reply_text(f"🎮 {secim.capitalize()} oyunu başladı.")
+    kategori_adi = {
+        "karisik": "🎲 Karışık",
+        "kelime": "🔤 Kelime",
+        "plaka": "🚗 Plaka",
+        "emoji": "😀 Emoji",
+        "bayrak": "🌍 Bayrak",
+        "mat": "🧠 Matematik",
+        "quiz": "❓ Quiz"
+    }.get(secim, secim)
+
+    await query.message.reply_text(
+        f"{kategori_adi} modu başladı!\n🎚️ Zorluk: *{oyunlar[chat]['zorluk'].capitalize()}*\n🚀 Hazır ol!",
+        parse_mode="Markdown"
+    )
 
     task = context.application.create_task(oyun_loop(chat, context.application))
     oyunlar[chat]["task"] = task
@@ -133,45 +443,95 @@ async def soru(chat, app):
         return
 
     kat = oyunlar[chat]["kategori"]
-    oyun = random.choice(["kelime", "plaka", "mat", "emoji", "bayrak"]) if kat == "karisik" else kat
+    zorluk = oyunlar[chat].get("zorluk", "kolay")
+    oyun = random.choice(["kelime", "plaka", "mat", "emoji", "bayrak", "quiz"]) if kat == "karisik" else kat
 
     cevap = None
     soru_text = None
 
     if oyun == "kelime":
         if not kelimeler:
-            await app.bot.send_message(chat, "❌ Kelime listesi boş.")
+            await app.bot.send_message(chat, "❌ Kelime verisi bulunamadı. Oyun durduruldu.")
+            if "task" in oyunlar[chat] and oyunlar[chat]["task"]:
+                oyunlar[chat]["task"].cancel()
+            del oyunlar[chat]
             return
-        k = random.choice(kelimeler).lower()
+
+        uygun = kelimeler
+        if zorluk == "kolay":
+            uygun = [k for k in kelimeler if 3 <= len(k) <= 5] or kelimeler
+        elif zorluk == "orta":
+            uygun = [k for k in kelimeler if 6 <= len(k) <= 8] or kelimeler
+        elif zorluk == "zor":
+            uygun = [k for k in kelimeler if len(k) >= 9] or kelimeler
+
+        k = random.choice(uygun).lower()
         cevap = k
-        soru_text = f"🔤 Kelime\n\n{make_scrambled_word(k)}"
+        soru_text = f"🔤 *Kelime Oyunu*\n\n🌀 Karışık harfler: `{make_scrambled_word(k)}`\n\n⏳ Süren başladı!"
 
     elif oyun == "plaka":
         p, s = random.choice(list(plakalar.items()))
         cevap = s.lower()
-        soru_text = f"🚗 {p} hangi şehir?"
+        soru_text = f"🚗 *Plaka Sorusu*\n\n📍 `{p}` plakası hangi şehre ait?\n\n⏳ Süren başladı!"
 
     elif oyun == "mat":
-        a = random.randint(10, 99)
-        b = random.randint(10, 99)
+        if zorluk == "kolay":
+            a = random.randint(10, 30)
+            b = random.randint(10, 30)
+        elif zorluk == "orta":
+            a = random.randint(20, 70)
+            b = random.randint(20, 70)
+        else:
+            a = random.randint(50, 200)
+            b = random.randint(50, 200)
         cevap = str(a + b)
-        soru_text = f"🧠 {a} + {b} = ?"
+        soru_text = f"🧠 *Matematik Sorusu*\n\n➕ `{a} + {b} = ?`\n\n⏳ Süren başladı!"
 
     elif oyun == "emoji":
         if not emoji:
-            await app.bot.send_message(chat, "❌ Emoji verisi boş.")
+            await app.bot.send_message(chat, "❌ Emoji verisi bulunamadı. Oyun durduruldu.")
+            if "task" in oyunlar[chat] and oyunlar[chat]["task"]:
+                oyunlar[chat]["task"].cancel()
+            del oyunlar[chat]
             return
+
         e, c = random.choice(list(emoji.items()))
         cevap = c.lower()
-        soru_text = f"😀 {e}"
+        soru_text = f"😀 *Emoji Tahmini*\n\n{e}\n\n❓ Bu neyi anlatıyor?"
 
     elif oyun == "bayrak":
         if not bayrak:
-            await app.bot.send_message(chat, "❌ Bayrak verisi boş.")
+            await app.bot.send_message(chat, "❌ Bayrak verisi bulunamadı. Oyun durduruldu.")
+            if "task" in oyunlar[chat] and oyunlar[chat]["task"]:
+                oyunlar[chat]["task"].cancel()
+            del oyunlar[chat]
             return
+
         b, c = random.choice(list(bayrak.items()))
         cevap = c.lower()
-        soru_text = f"🌍 {b}"
+        soru_text = f"🌍 *Bayrak Tahmini*\n\n{b}\n\n❓ Bu hangi ülke?"
+
+    elif oyun == "quiz":
+        if not quizler:
+            await app.bot.send_message(chat, "❌ Quiz verisi bulunamadı. Oyun durduruldu.")
+            if "task" in oyunlar[chat] and oyunlar[chat]["task"]:
+                oyunlar[chat]["task"].cancel()
+            del oyunlar[chat]
+            return
+
+        q = random.choice(quizler)
+        cevap = q["dogru"]
+        secenekler = q["secenekler"]
+
+        soru_text = (
+            f"❓ *4 Şıklı Quiz*\n\n"
+            f"📘 {q['soru']}\n\n"
+            f"🅰️ {secenekler[0]}\n"
+            f"🅱️ {secenekler[1]}\n"
+            f"🇨 {secenekler[2]}\n"
+            f"🇩 {secenekler[3]}\n\n"
+            f"✍️ Cevabı sadece `A`, `B`, `C` veya `D` olarak yaz."
+        )
 
     if not cevap:
         return
@@ -181,10 +541,18 @@ async def soru(chat, app):
     oyunlar[chat]["cevap"] = cevap.strip()
     oyunlar[chat]["baslangic"] = time.time()
     oyunlar[chat]["qid"] = qid
+    oyunlar[chat]["oyun"] = oyun
+    oyunlar[chat]["hint_used"] = False
 
-    await app.bot.send_message(chat, soru_text)
+    await app.bot.send_message(chat, soru_text, parse_mode="Markdown")
 
-    await asyncio.sleep(QUESTION_TIME)
+    sleep_time = QUESTION_TIME
+    if zorluk == "orta":
+        sleep_time = max(10, QUESTION_TIME - 3)
+    elif zorluk == "zor":
+        sleep_time = max(7, QUESTION_TIME - 5)
+
+    await asyncio.sleep(sleep_time)
 
     if chat not in oyunlar:
         return
@@ -193,7 +561,7 @@ async def soru(chat, app):
         return
 
     if oyunlar[chat]["aktif"]:
-        await app.bot.send_message(chat, f"⏰ Süre bitti.\n✅ Cevap: {cevap}")
+        await app.bot.send_message(chat, f"⏰ Süre bitti.\n✅ Cevap: *{cevap}*", parse_mode="Markdown")
         oyunlar[chat]["aktif"] = False
 
 async def oyun_loop(chat, app):
@@ -215,29 +583,32 @@ async def mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
 
-    text = update.message.text.lower().strip()
-    cevap = oyunlar[chat]["cevap"]
+    text = normalize(update.message.text)
+    cevap = normalize(oyunlar[chat]["cevap"])
 
     if text == cevap:
         elapsed = time.time() - oyunlar[chat]["baslangic"]
-        points, xp, coins = calc_rewards(elapsed)
+        zorluk = oyunlar[chat].get("zorluk", "kolay")
+        points, xp, coins = calc_rewards(elapsed, zorluk)
 
         user = update.effective_user
         add_reward(user.id, user.first_name, points, xp, coins)
 
         profile = get_profile(user.id, user.first_name)
-        name, total_points, total_xp, total_coins, daily_correct, streak, total_correct = profile
-        lvl = level_from_xp(total_xp)
+        name, total_points, total_xp, total_coins, daily_correct, streak, total_correct, last_daily, hint_count, x2_xp, x2_coin = profile
+        lvl = get_level(total_xp)
 
         await update.message.reply_text(
-            f"🎉 {name} doğru!\n\n"
-            f"⏱ Süre: {elapsed:.2f} sn\n"
-            f"🏆 +{points} puan\n"
-            f"⭐ +{xp} xp\n"
-            f"💰 +{coins} coin\n\n"
-            f"📊 Toplam Puan: {total_points}\n"
-            f"⭐ Level: {lvl}\n"
-            f"🔥 Streak: {streak}"
+            f"🎉 *{name}* doğru cevap verdi!\n\n"
+            f"⏱️ Süre: `{elapsed:.2f}` sn\n"
+            f"🏆 Puan: `+{points}`\n"
+            f"⭐ XP: `+{xp}`\n"
+            f"💰 Coin: `+{coins}`\n\n"
+            f"📊 *Durumun*\n"
+            f"🏅 Toplam Puan: `{total_points}`\n"
+            f"🆙 Level: `{lvl}`\n"
+            f"🔥 Streak: `{streak}`",
+            parse_mode="Markdown"
         )
 
         oyunlar[chat]["aktif"] = False
@@ -256,19 +627,23 @@ async def profil(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     profile = get_profile(user.id, user.first_name)
 
-    name, points, xp, coins, daily_correct, streak, total_correct = profile
-    lvl = level_from_xp(xp)
+    name, points, xp, coins, daily_correct, streak, total_correct, last_daily, hint_count, x2_xp, x2_coin = profile
+    lvl = get_level(xp)
 
     await update.message.reply_text(
-        f"👤 Profil\n\n"
-        f"İsim: {name}\n"
-        f"🏆 Puan: {points}\n"
-        f"⭐ XP: {xp}\n"
-        f"🆙 Level: {lvl}\n"
-        f"💰 Coin: {coins}\n"
-        f"🔥 Streak: {streak}\n"
-        f"✅ Günlük Doğru: {daily_correct}\n"
-        f"📚 Toplam Doğru: {total_correct}"
+        f"👤 *Kullanıcı Profili*\n\n"
+        f"🙍 İsim: *{name}*\n"
+        f"🏆 Puan: `{points}`\n"
+        f"⭐ XP: `{xp}`\n"
+        f"🆙 Level: `{lvl}`\n"
+        f"💰 Coin: `{coins}`\n"
+        f"🔥 Streak: `{streak}`\n"
+        f"💡 İpucu Hakkı: `{hint_count}`\n"
+        f"⚡ x2 XP: `{x2_xp}`\n"
+        f"💸 x2 Coin: `{x2_coin}`\n"
+        f"✅ Günlük Doğru: `{daily_correct}`\n"
+        f"📚 Toplam Doğru: `{total_correct}`",
+        parse_mode="Markdown"
     )
 
 async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -278,20 +653,100 @@ async def top(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Henüz liderlik verisi yok.")
         return
 
-    text = "🏆 Liderlik Tablosu\n\n"
+    text = "🏆 *Liderlik Tablosu*\n\n"
+    medals = ["🥇", "🥈", "🥉"]
     for i, (name, points) in enumerate(rows, start=1):
-        text += f"{i}. {name} - {points} puan\n"
+        medal = medals[i - 1] if i <= 3 else f"{i}."
+        text += f"{medal} {name} — *{points}* puan\n"
 
-    await update.message.reply_text(text)
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+async def gunluk(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    ok, remain = claim_daily(user.id, user.first_name)
+    if ok:
+        await update.message.reply_text("🎁 Günlük ödül alındı!\n💰 +25 coin\n⭐ +10 XP")
+    else:
+        saat = remain // 3600
+        dakika = (remain % 3600) // 60
+        await update.message.reply_text(f"⏳ Günlük ödül hazır değil.\nKalan süre: {saat} saat {dakika} dakika")
+
+async def market(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = (
+        "🛒 *Market*\n\n"
+        "💡 İpucu — 10 coin\n"
+        "⚡ x2 XP (5 soru) — 50 coin\n"
+        "💸 x2 Coin (5 soru) — 50 coin\n\n"
+        "Satın alma için:\n"
+        "`/satin_al hint`\n"
+        "`/satin_al x2_xp`\n"
+        "`/satin_al x2_coin`"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+async def satin_al(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+
+    if not context.args:
+        await update.message.reply_text("Kullanım: /satin_al hint")
+        return
+
+    item = context.args[0].strip().lower()
+    success, msg = buy_item(user.id, user.first_name, item)
+
+    if success:
+        await update.message.reply_text(f"✅ Satın alma başarılı: {item}")
+    else:
+        await update.message.reply_text(f"❌ {msg}")
+
+async def ipucu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    chat = update.effective_chat.id
+
+    if chat not in oyunlar or not oyunlar[chat]["aktif"]:
+        await update.message.reply_text("❌ Aktif bir soru yok.")
+        return
+
+    if oyunlar[chat]["hint_used"]:
+        await update.message.reply_text("❌ Bu soru için zaten ipucu kullandın.")
+        return
+
+    ok = use_hint(user.id, user.first_name)
+    if not ok:
+        await update.message.reply_text("❌ İpucu hakkın yok. Marketten satın alabilirsin.")
+        return
+
+    oyun = oyunlar[chat].get("oyun", oyunlar[chat]["kategori"])
+    cevap = oyunlar[chat]["cevap"]
+    hint = get_hint_text(oyun, cevap)
+    oyunlar[chat]["hint_used"] = True
+
+    await update.message.reply_text(hint, parse_mode="Markdown")
+
+async def basarim(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    achievements = get_achievements(user.id, user.first_name)
+
+    if not achievements:
+        await update.message.reply_text("🏅 Henüz başarım açmadın.")
+        return
+
+    text = "🏅 *Başarımların*\n\n" + "\n".join(f"• {a}" for a in achievements)
+    await update.message.reply_text(text, parse_mode="Markdown")
 
 async def yardim(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📜 Komutlar\n\n"
-        "/start - oyun menüsü\n"
-        "/profil - profilin\n"
-        "/top - liderlik tablosu\n"
-        "/son - oyunu durdur\n"
-        "/yardim - yardım"
+        "📘 *Yardım Menüsü*\n\n"
+        "🎮 /start - Ana menü\n"
+        "👤 /profil - Profilin\n"
+        "🏆 /top - Liderlik\n"
+        "🎁 /gunluk - Günlük ödül\n"
+        "🛒 /market - Marketi aç\n"
+        "💡 /ipucu - Aktif soru için ipucu kullan\n"
+        "🏅 /basarim - Başarımlarını gör\n"
+        "🛑 /son - Oyunu durdur\n"
+        "❓ /yardim - Yardım menüsü",
+        parse_mode="Markdown"
     )
 
 def main():
@@ -304,7 +759,13 @@ def main():
     app.add_handler(CommandHandler("stop", son))
     app.add_handler(CommandHandler("profil", profil))
     app.add_handler(CommandHandler("top", top))
+    app.add_handler(CommandHandler("gunluk", gunluk))
+    app.add_handler(CommandHandler("market", market))
+    app.add_handler(CommandHandler("satin_al", satin_al))
+    app.add_handler(CommandHandler("ipucu", ipucu))
+    app.add_handler(CommandHandler("basarim", basarim))
     app.add_handler(CommandHandler("yardim", yardim))
+
     app.add_handler(CallbackQueryHandler(kategori))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mesaj))
 
