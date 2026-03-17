@@ -230,7 +230,13 @@ def get_mode_icon(mode_name):
     }
     return mapping.get(mode_name, "🎮")
 
-def create_circle_avatar(img, size=100):
+def get_font(size, bold=False):
+    try:
+        return ImageFont.truetype("arial.ttf", size)
+    except:
+        return ImageFont.load_default()
+
+def create_circle_avatar(img, size=96):
     img = img.convert("RGB").resize((size, size))
     mask = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(mask)
@@ -253,14 +259,10 @@ async def fetch_profile_photo(bot, user_id):
         return None
     return None
 
-def create_default_avatar(name, size=100):
+def create_default_avatar(name, size=96):
     img = Image.new("RGB", (size, size), (55, 75, 110))
     draw = ImageDraw.Draw(img)
-    try:
-        font = ImageFont.truetype("arial.ttf", 34)
-    except:
-        font = ImageFont.load_default()
-
+    font = get_font(32, bold=True)
     initials = (name[:2].upper() if name else "U")
     bbox = draw.textbbox((0, 0), initials, font=font)
     tw = bbox[2] - bbox[0]
@@ -273,7 +275,8 @@ def draw_progress_bar(draw, x, y, w, h, percent, bg_color, fill_color, radius=10
     fill_w = max(8, int(w * max(0, min(1, percent))))
     draw.rounded_rectangle((x, y, x + fill_w, y + h), radius=radius, fill=fill_color)
 
-def create_score_image(
+def render_score_frame(
+    frame_index,
     name,
     elapsed,
     points,
@@ -302,12 +305,21 @@ def create_score_image(
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
+    glow = 20 + frame_index * 12
+
     draw.rounded_rectangle((15, 15, width - 15, height - 15), radius=28, fill=(12, 16, 25, 215), outline=theme["primary"], width=3)
     draw.rounded_rectangle((25, 25, width - 25, 85), radius=20, fill=(theme["dark"][0], theme["dark"][1], theme["dark"][2], 235))
 
-    # Kazanan efekti başlık alanı
-    draw.rounded_rectangle((35, 35, 210, 72), radius=14, fill=(255, 215, 0, 230))
-    draw.text((52, 43), "✨ KAZANAN! ✨", fill=(40, 30, 0), font=get_font(22, bold=True))
+    # Kazanan efekti alanı
+    effect_color = (255, max(180, 235 - glow), 80)
+    draw.rounded_rectangle((35, 35, 220, 72), radius=14, fill=(255, 215, 0, 230))
+    draw.text((48, 43), "✨ KAZANAN! ✨", fill=(40, 25, 0), font=get_font(22, bold=True))
+
+    # Parlama noktaları
+    for i in range(3):
+        px = 210 + (i * 180) + frame_index * 4
+        py = 48 + (i % 2) * 8
+        draw.ellipse((px, py, px + 8 + frame_index * 2, py + 8 + frame_index * 2), fill=(255, 255, 180, 180))
 
     draw.text((250, 38), f"{mode_icon} QUIZ ARENA", fill=theme["secondary"], font=get_font(28, bold=True))
     draw.text((250, 62), f"Mod: {mode_name}", fill=(255, 255, 255), font=get_font(18))
@@ -318,68 +330,103 @@ def create_score_image(
 
     if avatar_img is None:
         avatar_img = create_default_avatar(name)
-    avatar_circle = create_circle_avatar(avatar_img, 100)
-    overlay.paste(avatar_circle, (54, 125), avatar_circle)
+    avatar_circle = create_circle_avatar(avatar_img, 96)
+    overlay.paste(avatar_circle, (56, 125), avatar_circle)
 
-    draw.text((45, 238), name[:14], fill=(255, 255, 255), font=get_font(22, bold=True))
-    draw.text((45, 270), f"⏱ {elapsed:.2f} sn", fill=(190, 255, 210), font=get_font(17))
-    draw.text((45, 298), f"🔥 {streak} streak", fill=(255, 180, 120), font=get_font(17))
+    draw.text((44, 236), name[:14], fill=(255, 255, 255), font=get_font(22, bold=True))
+    draw.text((44, 267), f"⏱ {elapsed:.2f} sn", fill=(190, 255, 210), font=get_font(17))
+    draw.text((44, 294), f"🔥 {streak} streak", fill=(255, 180, 120), font=get_font(17))
 
     if is_group_champion:
-        draw.rounded_rectangle((40, 332, 168, 362), radius=12, fill=(255, 215, 0, 230))
-        draw.text((52, 339), "👑 ŞAMPİYON", fill=(45, 30, 0), font=get_font(15, bold=True))
+        draw.rounded_rectangle((40, 328, 168, 358), radius=12, fill=(255, 215, 0, 230))
+        draw.text((51, 335), "👑 ŞAMPİYON", fill=(45, 30, 0), font=get_font(15, bold=True))
 
-    # Kazanılanlar
     draw.text((220, 118), "Kazanılanlar", fill=theme["secondary"], font=get_font(22, bold=True))
     draw.text((220, 155), f"🏅 +{points} puan", fill=theme["primary"], font=get_font(20))
     draw.text((390, 155), f"⭐ +{xp} XP", fill=(120, 210, 255), font=get_font(20))
     draw.text((530, 155), f"🪙 +{coins} coin", fill=(120, 255, 150), font=get_font(20))
 
-    # Genel durum
     draw.text((220, 250), "Genel Durum", fill=theme["secondary"], font=get_font(22, bold=True))
     draw.text((220, 285), f"🏆 Puan: {total_points}", fill=(255, 255, 255), font=get_font(18))
     draw.text((390, 285), f"🆙 Level: {lvl}", fill=lvl_col, font=get_font(18, bold=True))
     draw.text((540, 285), f"⭐ XP: {total_xp}", fill=(180, 230, 255), font=get_font(18))
 
-    # Progress hesapları
     xp_current = total_xp % 50
     xp_needed = 50
     xp_percent = xp_current / xp_needed
-
     level_percent = min(lvl / 20, 1.0)
 
+    # animasyonlu dolum
+    frame_factor = (frame_index + 1) / 4
+    xp_percent_anim = xp_percent * frame_factor
+    level_percent_anim = level_percent * frame_factor
+
     draw.text((220, 320), "XP Bar", fill=(220, 220, 255), font=get_font(16))
-    draw_progress_bar(draw, 220, 345, 250, 18, xp_percent, (70, 75, 95), (100, 190, 255))
+    draw_progress_bar(draw, 220, 345, 250, 18, xp_percent_anim, (70, 75, 95), (100, 190, 255))
 
     draw.text((490, 320), "Level Bar", fill=(220, 220, 255), font=get_font(16))
-    draw_progress_bar(draw, 490, 345, 250, 18, level_percent, (70, 75, 95), lvl_col)
+    draw_progress_bar(draw, 490, 345, 250, 18, level_percent_anim, (70, 75, 95), lvl_col)
 
     draw.text((220, 368), f"{xp_current}/{xp_needed} XP", fill=(200, 220, 255), font=get_font(14))
     draw.text((490, 368), f"Seviye Gücü: %{int(level_percent * 100)}", fill=(200, 220, 255), font=get_font(14))
 
     final = Image.alpha_composite(bg.convert("RGBA"), overlay)
+    return final.convert("P")
+
+def create_score_gif(
+    name,
+    elapsed,
+    points,
+    xp,
+    coins,
+    total_points,
+    total_xp,
+    lvl,
+    streak,
+    mode_name,
+    avatar_img=None,
+    is_group_champion=False
+):
+    frames = []
+    for i in range(4):
+        frame = render_score_frame(
+            frame_index=i,
+            name=name,
+            elapsed=elapsed,
+            points=points,
+            xp=xp,
+            coins=coins,
+            total_points=total_points,
+            total_xp=total_xp,
+            lvl=lvl,
+            streak=streak,
+            mode_name=mode_name,
+            avatar_img=avatar_img,
+            is_group_champion=is_group_champion
+        )
+        frames.append(frame)
 
     buffer = io.BytesIO()
-    final.save(buffer, format="PNG")
+    frames[0].save(
+        buffer,
+        format="GIF",
+        save_all=True,
+        append_images=frames[1:],
+        duration=180,
+        loop=0,
+        optimize=False
+    )
     buffer.seek(0)
     return buffer
 
-def get_font(size, bold=False):
-    try:
-        if bold:
-            return ImageFont.truetype("arial.ttf", size)
-        return ImageFont.truetype("arial.ttf", size)
-    except:
-        return ImageFont.load_default()
-
-async def send_score_image(chat_id, bot, user_id, name, elapsed, points, xp, coins, total_points, total_xp, lvl, streak, mode_name):
+async def send_score_gif(chat_id, bot, user_id, name, elapsed, points, xp, coins, total_points, total_xp, lvl, streak, mode_name):
     avatar = await fetch_profile_photo(bot, user_id)
     rows = get_group_top(chat_id, 1)
     is_group_champion = False
     if rows and rows[0][0] == name:
         is_group_champion = True
 
-    img = create_score_image(
+    gif_data = create_score_gif(
         name=name,
         elapsed=elapsed,
         points=points,
@@ -393,7 +440,11 @@ async def send_score_image(chat_id, bot, user_id, name, elapsed, points, xp, coi
         avatar_img=avatar,
         is_group_champion=is_group_champion
     )
-    await bot.send_photo(chat_id=chat_id, photo=InputFile(img, filename="score_card.png"))
+
+    await bot.send_animation(
+        chat_id=chat_id,
+        animation=InputFile(gif_data, filename="score_card.gif")
+    )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -591,7 +642,7 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
             name, total_points, total_xp, total_coins, daily_correct, streak, *_ = profile
             lvl = get_level(total_xp)
 
-            await send_score_image(
+            await send_score_gif(
                 chat_id=chat,
                 bot=context.bot,
                 user_id=user.id,
@@ -798,7 +849,7 @@ async def mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "bayrak": "🌍 Bayrak",
         }.get(oyunlar[chat].get("oyun"), "🎮 Oyun")
 
-        await send_score_image(
+        await send_score_gif(
             chat_id=chat,
             bot=context.bot,
             user_id=user.id,
