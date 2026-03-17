@@ -6,7 +6,7 @@ import io
 from pathlib import Path
 from collections import deque
 from dotenv import load_dotenv
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, InputFile
 from telegram.ext import (
@@ -190,27 +190,24 @@ def choose_non_repeating(seq, used_keys, key_func):
 def get_theme_by_rank(points):
     if points >= 1000:
         return {
-            "name": "gold",
             "primary": (255, 215, 0),
             "secondary": (255, 240, 170),
-            "panel": (70, 55, 10),
-            "text": (255, 255, 255),
+            "dark": (95, 72, 10),
+            "accent": (255, 227, 85),
         }
     elif points >= 500:
         return {
-            "name": "silver",
             "primary": (192, 192, 192),
-            "secondary": (230, 230, 230),
-            "panel": (55, 60, 70),
-            "text": (255, 255, 255),
+            "secondary": (235, 235, 235),
+            "dark": (70, 74, 88),
+            "accent": (205, 205, 220),
         }
     else:
         return {
-            "name": "bronze",
             "primary": (205, 127, 50),
             "secondary": (240, 190, 150),
-            "panel": (70, 45, 35),
-            "text": (255, 255, 255),
+            "dark": (88, 54, 42),
+            "accent": (230, 155, 90),
         }
 
 def level_color(level):
@@ -222,7 +219,18 @@ def level_color(level):
         return (120, 255, 170)
     return (255, 255, 255)
 
-def create_circle_avatar(img, size=110):
+def get_mode_icon(mode_name):
+    mapping = {
+        "🔤 Kelime": "🔤",
+        "🚗 Plaka": "🚗",
+        "🧠 Matematik": "🧠",
+        "😀 Emoji": "😀",
+        "🌍 Bayrak": "🌍",
+        "❓ Quiz": "❓",
+    }
+    return mapping.get(mode_name, "🎮")
+
+def create_circle_avatar(img, size=100):
     img = img.convert("RGB").resize((size, size))
     mask = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(mask)
@@ -245,11 +253,11 @@ async def fetch_profile_photo(bot, user_id):
         return None
     return None
 
-def create_default_avatar(name, size=110):
-    img = Image.new("RGB", (size, size), (60, 80, 120))
+def create_default_avatar(name, size=100):
+    img = Image.new("RGB", (size, size), (55, 75, 110))
     draw = ImageDraw.Draw(img)
     try:
-        font = ImageFont.truetype("arial.ttf", 42)
+        font = ImageFont.truetype("arial.ttf", 34)
     except:
         font = ImageFont.load_default()
 
@@ -257,8 +265,13 @@ def create_default_avatar(name, size=110):
     bbox = draw.textbbox((0, 0), initials, font=font)
     tw = bbox[2] - bbox[0]
     th = bbox[3] - bbox[1]
-    draw.text(((size - tw) / 2, (size - th) / 2 - 4), initials, fill=(255, 255, 255), font=font)
+    draw.text(((size - tw) / 2, (size - th) / 2 - 2), initials, fill=(255, 255, 255), font=font)
     return img
+
+def draw_progress_bar(draw, x, y, w, h, percent, bg_color, fill_color, radius=10):
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=radius, fill=bg_color)
+    fill_w = max(8, int(w * max(0, min(1, percent))))
+    draw.rounded_rectangle((x, y, x + fill_w, y + h), radius=radius, fill=fill_color)
 
 def create_score_image(
     name,
@@ -267,66 +280,82 @@ def create_score_image(
     xp,
     coins,
     total_points,
+    total_xp,
     lvl,
     streak,
     mode_name,
     avatar_img=None,
     is_group_champion=False
 ):
-    width, height = 760, 360
+    width, height = 820, 420
 
     if CARD_BG_PATH.exists():
         bg = Image.open(CARD_BG_PATH).convert("RGB").resize((width, height))
+        bg = bg.filter(ImageFilter.GaussianBlur(1))
     else:
         bg = Image.new("RGB", (width, height), (18, 22, 35))
+
+    theme = get_theme_by_rank(total_points)
+    lvl_col = level_color(lvl)
+    mode_icon = get_mode_icon(mode_name)
 
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
 
-    theme = get_theme_by_rank(total_points)
-    lvl_col = level_color(lvl)
+    draw.rounded_rectangle((15, 15, width - 15, height - 15), radius=28, fill=(12, 16, 25, 215), outline=theme["primary"], width=3)
+    draw.rounded_rectangle((25, 25, width - 25, 85), radius=20, fill=(theme["dark"][0], theme["dark"][1], theme["dark"][2], 235))
 
-    draw.rounded_rectangle((15, 15, width - 15, height - 15), radius=28, fill=(15, 20, 30, 210), outline=theme["primary"], width=3)
-    draw.rounded_rectangle((25, 25, width - 25, 85), radius=22, fill=(theme["panel"][0], theme["panel"][1], theme["panel"][2], 230))
-    draw.rounded_rectangle((25, 100, 205, 335), radius=22, fill=(35, 40, 55, 220))
-    draw.rounded_rectangle((220, 100, width - 25, 220), radius=22, fill=(35, 40, 55, 220))
-    draw.rounded_rectangle((220, 235, width - 25, 335), radius=22, fill=(35, 40, 55, 220))
+    # Kazanan efekti başlık alanı
+    draw.rounded_rectangle((35, 35, 210, 72), radius=14, fill=(255, 215, 0, 230))
+    draw.text((52, 43), "✨ KAZANAN! ✨", fill=(40, 30, 0), font=get_font(22, bold=True))
 
-    try:
-        title_font = ImageFont.truetype("arial.ttf", 28)
-        bold_font = ImageFont.truetype("arial.ttf", 24)
-        normal_font = ImageFont.truetype("arial.ttf", 20)
-        small_font = ImageFont.truetype("arial.ttf", 16)
-    except:
-        title_font = ImageFont.load_default()
-        bold_font = ImageFont.load_default()
-        normal_font = ImageFont.load_default()
-        small_font = ImageFont.load_default()
+    draw.text((250, 38), f"{mode_icon} QUIZ ARENA", fill=theme["secondary"], font=get_font(28, bold=True))
+    draw.text((250, 62), f"Mod: {mode_name}", fill=(255, 255, 255), font=get_font(18))
 
-    draw.text((40, 40), "QUIZ ARENA", font=title_font, fill=theme["secondary"])
-    draw.text((250, 40), f"🏆 {mode_name}", font=bold_font, fill=(255, 255, 255))
+    draw.rounded_rectangle((28, 102, 180, 390), radius=24, fill=(30, 36, 52, 220))
+    draw.rounded_rectangle((195, 102, width - 28, 220), radius=24, fill=(30, 36, 52, 220))
+    draw.rounded_rectangle((195, 235, width - 28, 390), radius=24, fill=(30, 36, 52, 220))
 
     if avatar_img is None:
         avatar_img = create_default_avatar(name)
-    avatar_circle = create_circle_avatar(avatar_img, 110)
-    overlay.paste(avatar_circle, (60, 125), avatar_circle)
+    avatar_circle = create_circle_avatar(avatar_img, 100)
+    overlay.paste(avatar_circle, (54, 125), avatar_circle)
 
-    draw.text((55, 245), name[:14], font=bold_font, fill=(255, 255, 255))
-    draw.text((55, 275), f"⏱ {elapsed:.2f} sn", font=normal_font, fill=(200, 255, 220))
+    draw.text((45, 238), name[:14], fill=(255, 255, 255), font=get_font(22, bold=True))
+    draw.text((45, 270), f"⏱ {elapsed:.2f} sn", fill=(190, 255, 210), font=get_font(17))
+    draw.text((45, 298), f"🔥 {streak} streak", fill=(255, 180, 120), font=get_font(17))
 
     if is_group_champion:
-        draw.rounded_rectangle((42, 300, 168, 326), radius=12, fill=(255, 215, 0, 220))
-        draw.text((55, 304), "👑 Grup Şampiyonu", font=small_font, fill=(40, 30, 0))
+        draw.rounded_rectangle((40, 332, 168, 362), radius=12, fill=(255, 215, 0, 230))
+        draw.text((52, 339), "👑 ŞAMPİYON", fill=(45, 30, 0), font=get_font(15, bold=True))
 
-    draw.text((245, 115), "Kazanılanlar", font=bold_font, fill=theme["secondary"])
-    draw.text((245, 150), f"🏅 Puan  +{points}", font=normal_font, fill=theme["primary"])
-    draw.text((410, 150), f"⭐ XP  +{xp}", font=normal_font, fill=(120, 210, 255))
-    draw.text((540, 150), f"💰 Coin  +{coins}", font=normal_font, fill=(120, 255, 150))
-    draw.text((245, 185), f"🔥 Streak  {streak}", font=normal_font, fill=(255, 170, 120))
+    # Kazanılanlar
+    draw.text((220, 118), "Kazanılanlar", fill=theme["secondary"], font=get_font(22, bold=True))
+    draw.text((220, 155), f"🏅 +{points} puan", fill=theme["primary"], font=get_font(20))
+    draw.text((390, 155), f"⭐ +{xp} XP", fill=(120, 210, 255), font=get_font(20))
+    draw.text((530, 155), f"🪙 +{coins} coin", fill=(120, 255, 150), font=get_font(20))
 
-    draw.text((245, 250), "Genel Durum", font=bold_font, fill=theme["secondary"])
-    draw.text((245, 285), f"🏆 Toplam Puan: {total_points}", font=normal_font, fill=(255, 255, 255))
-    draw.text((500, 285), f"🆙 Level: {lvl}", font=normal_font, fill=lvl_col)
+    # Genel durum
+    draw.text((220, 250), "Genel Durum", fill=theme["secondary"], font=get_font(22, bold=True))
+    draw.text((220, 285), f"🏆 Puan: {total_points}", fill=(255, 255, 255), font=get_font(18))
+    draw.text((390, 285), f"🆙 Level: {lvl}", fill=lvl_col, font=get_font(18, bold=True))
+    draw.text((540, 285), f"⭐ XP: {total_xp}", fill=(180, 230, 255), font=get_font(18))
+
+    # Progress hesapları
+    xp_current = total_xp % 50
+    xp_needed = 50
+    xp_percent = xp_current / xp_needed
+
+    level_percent = min(lvl / 20, 1.0)
+
+    draw.text((220, 320), "XP Bar", fill=(220, 220, 255), font=get_font(16))
+    draw_progress_bar(draw, 220, 345, 250, 18, xp_percent, (70, 75, 95), (100, 190, 255))
+
+    draw.text((490, 320), "Level Bar", fill=(220, 220, 255), font=get_font(16))
+    draw_progress_bar(draw, 490, 345, 250, 18, level_percent, (70, 75, 95), lvl_col)
+
+    draw.text((220, 368), f"{xp_current}/{xp_needed} XP", fill=(200, 220, 255), font=get_font(14))
+    draw.text((490, 368), f"Seviye Gücü: %{int(level_percent * 100)}", fill=(200, 220, 255), font=get_font(14))
 
     final = Image.alpha_composite(bg.convert("RGBA"), overlay)
 
@@ -335,7 +364,15 @@ def create_score_image(
     buffer.seek(0)
     return buffer
 
-async def send_score_image(chat_id, bot, user_id, name, elapsed, points, xp, coins, total_points, lvl, streak, mode_name):
+def get_font(size, bold=False):
+    try:
+        if bold:
+            return ImageFont.truetype("arial.ttf", size)
+        return ImageFont.truetype("arial.ttf", size)
+    except:
+        return ImageFont.load_default()
+
+async def send_score_image(chat_id, bot, user_id, name, elapsed, points, xp, coins, total_points, total_xp, lvl, streak, mode_name):
     avatar = await fetch_profile_photo(bot, user_id)
     rows = get_group_top(chat_id, 1)
     is_group_champion = False
@@ -349,6 +386,7 @@ async def send_score_image(chat_id, bot, user_id, name, elapsed, points, xp, coi
         xp=xp,
         coins=coins,
         total_points=total_points,
+        total_xp=total_xp,
         lvl=lvl,
         streak=streak,
         mode_name=mode_name,
@@ -563,6 +601,7 @@ async def kategori(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 xp=real_xp,
                 coins=real_coins,
                 total_points=total_points,
+                total_xp=total_xp,
                 lvl=lvl,
                 streak=streak,
                 mode_name="❓ Quiz"
@@ -769,6 +808,7 @@ async def mesaj(update: Update, context: ContextTypes.DEFAULT_TYPE):
             xp=real_xp,
             coins=real_coins,
             total_points=total_points,
+            total_xp=total_xp,
             lvl=lvl,
             streak=streak,
             mode_name=mode_name
